@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mermaid Proposal Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="control-panel">
+        <div class="panel-head">
+          <p class="eyebrow">Mermaid Proposal Studio</p>
+          <h1>把 Mermaid 直接转成适合汇报的高质量方案图</h1>
+          <p class="panel-copy">
+            输入 Mermaid 语法，实时预览。导出时会自动套用演示封面、标题区和高清画布。
+          </p>
+        </div>
+
+        <section class="panel-block">
+          <label class="field-label" for="diagram-title">方案标题</label>
+          <input id="diagram-title" type="text" value="支付产品改版方案" />
+
+          <label class="field-label" for="diagram-subtitle">副标题</label>
+          <input
+            id="diagram-subtitle"
+            type="text"
+            value="覆盖需求洞察、流程改造与上线节奏"
+          />
+        </section>
+
+        <section class="panel-block grid-two">
+          <div>
+            <label class="field-label" for="footer-left-input">底部左文案</label>
+            <input
+              id="footer-left-input"
+              type="text"
+              value="Generated with Mermaid Proposal Studio"
+            />
+          </div>
+          <div>
+            <label class="field-label" for="footer-right-input">底部右文案</label>
+            <input id="footer-right-input" type="text" value="2026年3月17日" />
+          </div>
+        </section>
+
+        <section class="panel-block grid-two">
+          <div>
+            <label class="field-label" for="palette-select">配色</label>
+            <select id="palette-select">
+              <option value="aurora">Aurora</option>
+              <option value="sunset">Sunset</option>
+              <option value="slate">Slate</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="ratio-select">比例</label>
+            <select id="ratio-select">
+              <option value="16:9">16:9</option>
+              <option value="4:3">4:3</option>
+              <option value="1:1">1:1</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="panel-block">
+          <div class="templates">
+            <button class="template-chip" data-template="roadmap">路线图</button>
+            <button class="template-chip" data-template="flow">流程图</button>
+            <button class="template-chip" data-template="journey">用户旅程</button>
+          </div>
+        </section>
+
+        <section class="panel-block editor-block">
+          <div class="editor-head">
+            <label class="field-label" for="mermaid-input">Mermaid</label>
+            <button id="format-btn" class="ghost-btn">恢复示例</button>
+          </div>
+          <textarea id="mermaid-input" spellcheck="false"></textarea>
+        </section>
+
+        <section class="panel-block action-row">
+          <button id="render-btn" class="primary-btn">刷新预览</button>
+          <button id="download-svg-btn" class="secondary-btn">导出 SVG</button>
+          <button id="download-png-btn" class="secondary-btn">导出 PNG</button>
+        </section>
+
+        <p id="status-text" class="status-text">正在初始化...</p>
+      </aside>
+
+      <main class="preview-area">
+        <div class="preview-toolbar">
+          <span>输出画布</span>
+          <div class="preview-toolbar-actions">
+            <span id="canvas-meta">1600 × 900</span>
+            <button id="fullscreen-btn" class="icon-btn" type="button" aria-label="全屏查看" title="全屏查看">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 9V4h5" />
+                <path d="M20 9V4h-5" />
+                <path d="M4 15v5h5" />
+                <path d="M20 15v5h-5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <section class="storyboard-block preview-storyboard">
+          <div class="editor-head">
+            <label class="field-label board-label">图纸列表</label>
+            <div class="mini-actions">
+              <button id="new-diagram-btn" class="ghost-btn">新建</button>
+              <button id="duplicate-diagram-btn" class="ghost-btn">复制</button>
+              <button id="delete-diagram-btn" class="ghost-btn danger-btn">删除当前</button>
+              <button id="clear-cache-btn" class="ghost-btn">清空缓存</button>
+            </div>
+          </div>
+          <div id="diagram-list" class="diagram-list diagram-list-horizontal"></div>
+        </section>
+        <div class="preview-stage">
+          <div id="export-frame" class="export-frame">
+            <div class="frame-noise"></div>
+            <div class="frame-header">
+              <div>
+                <p class="frame-kicker">Product Blueprint</p>
+                <h2 id="preview-title">支付产品改版方案</h2>
+              </div>
+              <div id="preview-subtitle" class="preview-subtitle">覆盖需求洞察、流程改造与上线节奏</div>
+            </div>
+
+            <div class="diagram-card">
+              <div class="card-accent"></div>
+              <div id="diagram-mount" class="diagram-mount"></div>
+            </div>
+
+            <div class="frame-footer">
+              <span id="footer-left">Generated with Mermaid Proposal Studio</span>
+              <span id="footer-right">2026年3月17日</span>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
