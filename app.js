@@ -49,11 +49,11 @@ const palettes = {
     accentStrong: "#78afff",
     cardBg: "rgba(251, 253, 255, 0.97)",
     mermaidTheme: {
-      primaryColor: "#edf4ff",
+      primaryColor: "#f4f8ff",
       primaryTextColor: "#15345b",
-      primaryBorderColor: "#89aee6",
-      lineColor: "#557eb8",
-      secondaryColor: "#e7f0ff",
+      primaryBorderColor: "#7fa4dd",
+      lineColor: "#4f78b0",
+      secondaryColor: "#ebf3ff",
       tertiaryColor: "#f8fbff",
       clusterBkg: "#f2f7ff",
       clusterBorder: "#b7cae6",
@@ -67,10 +67,10 @@ const palettes = {
     accentStrong: "#ffd36b",
     cardBg: "rgba(255, 248, 243, 0.94)",
     mermaidTheme: {
-      primaryColor: "#fff0e8",
+      primaryColor: "#fff4ee",
       primaryTextColor: "#522314",
       primaryBorderColor: "#ffaf8d",
-      lineColor: "#c76739",
+      lineColor: "#be663e",
       secondaryColor: "#ffe2d6",
       tertiaryColor: "#fff9f5",
       clusterBkg: "#fff1ea",
@@ -85,10 +85,10 @@ const palettes = {
     accentStrong: "#c7f0ff",
     cardBg: "rgba(245, 248, 252, 0.95)",
     mermaidTheme: {
-      primaryColor: "#eff6ff",
+      primaryColor: "#f5f8fc",
       primaryTextColor: "#17263c",
       primaryBorderColor: "#8db2d6",
-      lineColor: "#506d95",
+      lineColor: "#4b678f",
       secondaryColor: "#e6edf7",
       tertiaryColor: "#fbfdff",
       clusterBkg: "#eef3f8",
@@ -117,6 +117,9 @@ const els = {
   palette: document.querySelector("#palette-select"),
   ratio: document.querySelector("#ratio-select"),
   input: document.querySelector("#mermaid-input"),
+  optimizeBtn: document.querySelector("#optimize-btn"),
+  toggleOptimizedBtn: document.querySelector("#toggle-optimized-btn"),
+  applyOptimizedBtn: document.querySelector("#apply-optimized-btn"),
   renderBtn: document.querySelector("#render-btn"),
   resetBtn: document.querySelector("#format-btn"),
   downloadSvgBtn: document.querySelector("#download-svg-btn"),
@@ -152,6 +155,48 @@ els.resetBtn.addEventListener("click", () => {
   updateCurrentDiagram({
     ...makeDefaultDiagram(),
     id: current.id
+  });
+  syncFormFromState();
+  renderDiagram();
+});
+
+els.optimizeBtn.addEventListener("click", () => {
+  const current = getCurrentDiagram();
+  const optimizedMermaid = optimizeMermaidSource(els.input.value);
+  updateCurrentDiagram({
+    optimizedMermaid,
+    previewMode: "optimized"
+  });
+  syncFormFromState();
+  renderDiagram();
+});
+
+els.toggleOptimizedBtn.addEventListener("click", () => {
+  const current = getCurrentDiagram();
+  if (!current.optimizedMermaid?.trim()) {
+    const optimizedMermaid = optimizeMermaidSource(els.input.value);
+    updateCurrentDiagram({
+      optimizedMermaid,
+      previewMode: "optimized"
+    });
+  } else {
+    updateCurrentDiagram({
+      previewMode: current.previewMode === "optimized" ? "original" : "optimized"
+    });
+  }
+  syncFormFromState();
+  renderDiagram();
+});
+
+els.applyOptimizedBtn.addEventListener("click", () => {
+  const current = getCurrentDiagram();
+  if (!current.optimizedMermaid?.trim()) {
+    return;
+  }
+  updateCurrentDiagram({
+    mermaid: current.optimizedMermaid,
+    optimizedMermaid: "",
+    previewMode: "original"
   });
   syncFormFromState();
   renderDiagram();
@@ -216,6 +261,10 @@ function syncFormFromState() {
   els.palette.value = current.palette;
   els.ratio.value = current.ratio;
   els.input.value = current.mermaid;
+  els.toggleOptimizedBtn.textContent =
+    current.previewMode === "optimized" ? "预览原文版" : "预览优化版";
+  els.toggleOptimizedBtn.disabled = !current.optimizedMermaid?.trim() && !current.mermaid.trim();
+  els.applyOptimizedBtn.disabled = !current.optimizedMermaid?.trim();
   syncFrameText();
   renderDiagramList();
 }
@@ -236,7 +285,9 @@ function handleFieldChange() {
     footerRight: els.footerRightInput.value,
     palette: els.palette.value,
     ratio: els.ratio.value,
-    mermaid: els.input.value
+    mermaid: els.input.value,
+    optimizedMermaid: "",
+    previewMode: "original"
   });
   syncFrameText();
   renderDiagramList();
@@ -286,7 +337,7 @@ async function renderDiagram() {
   if (!mermaidApi) return;
 
   const current = getCurrentDiagram();
-  const source = current.mermaid.trim();
+  const source = getActiveMermaidSource(current).trim();
   if (!source) {
     showError("请输入 Mermaid 语法。");
     return;
@@ -307,7 +358,7 @@ async function renderDiagram() {
     const { svg } = await mermaidApi.default.render(currentId, source, undefined, document.createElement("div"));
     els.mount.innerHTML = svg;
     postProcessSvg(els.mount.querySelector("svg"), palette);
-    setStatus("预览已更新，当前图纸已自动缓存。");
+    setStatus(current.previewMode === "optimized" ? "优化预览已更新，当前图纸已自动缓存。" : "预览已更新，当前图纸已自动缓存。");
   } catch (error) {
     showError(error?.message || "Mermaid 语法有误，请检查后重试。");
     console.error(error);
@@ -321,6 +372,19 @@ function postProcessSvg(svg, palette) {
   svg.style.maxWidth = "100%";
   svg.style.height = "auto";
   svg.style.fontFamily = "Noto Sans SC, PingFang SC, sans-serif";
+  svg.style.overflow = "visible";
+
+  svg.querySelectorAll("rect, polygon, path, circle, ellipse").forEach((node) => {
+    if (node.tagName === "rect") {
+      node.setAttribute("rx", node.getAttribute("rx") || "12");
+      node.setAttribute("ry", node.getAttribute("ry") || "12");
+    }
+    if (node.getAttribute("stroke")) {
+      node.setAttribute("stroke-width", "1.6");
+      node.setAttribute("stroke-linecap", "round");
+      node.setAttribute("stroke-linejoin", "round");
+    }
+  });
 
   ["rect.er", "polygon", "rect", "circle", "ellipse"].forEach((selector) => {
     svg.querySelectorAll(selector).forEach((node) => {
@@ -331,6 +395,25 @@ function postProcessSvg(svg, palette) {
 
   svg.querySelectorAll("text").forEach((node) => {
     node.setAttribute("fill", palette.mermaidTheme.primaryTextColor);
+    node.setAttribute("font-size", node.getAttribute("font-size") || "15");
+    node.setAttribute("font-weight", "600");
+  });
+
+  svg.querySelectorAll(".edgeLabel rect, .labelBkg").forEach((node) => {
+    node.setAttribute("rx", "8");
+    node.setAttribute("ry", "8");
+    node.setAttribute("fill", "#ffffff");
+    node.setAttribute("stroke", "rgba(21,52,91,0.08)");
+  });
+
+  svg.querySelectorAll(".nodeLabel, .edgeLabel, .cluster-label text").forEach((node) => {
+    node.setAttribute("fill", palette.mermaidTheme.primaryTextColor);
+  });
+
+  svg.querySelectorAll(".flowchart-link, .marker, .path").forEach((node) => {
+    if (node.getAttribute("stroke")) {
+      node.setAttribute("stroke", palette.mermaidTheme.lineColor);
+    }
   });
 }
 
@@ -342,6 +425,122 @@ function showError(message) {
 
 function setStatus(message) {
   els.status.textContent = message;
+}
+
+function getActiveMermaidSource(current = getCurrentDiagram()) {
+  return current.previewMode === "optimized" && current.optimizedMermaid?.trim()
+    ? current.optimizedMermaid
+    : current.mermaid;
+}
+
+function optimizeMermaidSource(source) {
+  const trimmed = String(source || "").trim();
+  if (!trimmed) return "";
+
+  if (/^(flowchart|graph)\b/i.test(trimmed)) {
+    return optimizeFlowchart(trimmed);
+  }
+  if (/^journey\b/i.test(trimmed)) {
+    return optimizeJourney(trimmed);
+  }
+  return trimmed;
+}
+
+function optimizeFlowchart(source) {
+  const lines = source.split("\n").map((line) => line.replace(/\t/g, "  ").trimEnd());
+  return lines
+    .map((line, index) => {
+      if (index === 0) {
+        return line.replace(/\s+/g, " ").replace(/\bgraph\b/i, "flowchart");
+      }
+
+      let nextLine = line.trim();
+      if (!nextLine) return "";
+
+      nextLine = nextLine
+        .replace(/\[(.*?)\]/g, (_, label) => `[${wrapMermaidLabel(label)}]`)
+        .replace(/\{(.*?)\}/g, (_, label) => `{${wrapMermaidLabel(label)}}`)
+        .replace(/\(\[(.*?)\]\)/g, (_, label) => `([${wrapMermaidLabel(label)}])`)
+        .replace(/\(\((.*?)\)\)/g, (_, label) => `((${wrapMermaidLabel(label)}))`)
+        .replace(/\|(.*?)\|/g, (_, label) => `|${shortenEdgeLabel(label)}|`);
+
+      return `  ${nextLine}`;
+    })
+    .filter((line, index, all) => !(line === "" && all[index - 1] === ""))
+    .join("\n")
+    .trim();
+}
+
+function optimizeJourney(source) {
+  return source
+    .split("\n")
+    .map((line, index) => {
+      if (index <= 1) return line.trimEnd();
+      const trimmed = line.trim();
+      if (!trimmed || /^section\b/i.test(trimmed)) {
+        return trimmed ? `  ${trimmed}` : "";
+      }
+      const parts = trimmed.split(":");
+      if (parts.length < 2) {
+        return `    ${trimmed}`;
+      }
+      const [step, ...rest] = parts;
+      return `    ${wrapMermaidLabel(step, 10)}: ${rest.join(":").trim()}`;
+    })
+    .join("\n")
+    .trim();
+}
+
+function wrapMermaidLabel(text, maxLineLength = 8) {
+  const normalized = String(text || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized || normalized.includes("\n")) {
+    return normalized.replace(/\n/g, "<br/>");
+  }
+  if (normalized.length <= maxLineLength + 2) {
+    return normalized;
+  }
+
+  const tokens = normalized
+    .split(/([\/、，,：:·\-\s])/)
+    .filter(Boolean)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  if (tokens.length <= 1) {
+    return splitPlainText(normalized, maxLineLength).join("<br/>");
+  }
+
+  const lines = [];
+  let current = "";
+  tokens.forEach((token) => {
+    const next = current ? `${current}${token}` : token;
+    if (next.replace(/\s+/g, "").length > maxLineLength && current) {
+      lines.push(current.trim());
+      current = token;
+    } else {
+      current = next;
+    }
+  });
+  if (current) lines.push(current.trim());
+  return lines.join("<br/>");
+}
+
+function splitPlainText(text, maxLineLength) {
+  const chars = Array.from(text);
+  const lines = [];
+  for (let i = 0; i < chars.length; i += maxLineLength) {
+    lines.push(chars.slice(i, i + maxLineLength).join(""));
+  }
+  return lines;
+}
+
+function shortenEdgeLabel(text) {
+  const normalized = String(text || "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= 8) return normalized;
+  return `${normalized.slice(0, 8)}…`;
 }
 
 async function downloadSvg() {
@@ -418,8 +617,12 @@ function buildExportSvg() {
   const footerLeft = escapeXml(els.footerLeft.textContent);
   const footerRight = escapeXml(els.footerRight.textContent);
   const embeddedDiagram = buildEmbeddedDiagramMarkup(diagramSvg, ratio);
-  const subtitleX = Math.round(ratio.width * 0.68);
-  const subtitleY = 94;
+  const subtitleX = 68;
+  const subtitleY = ratio.height > 1000 ? 174 : 162;
+  const subtitleFontSize = ratio.height > 1000 ? 24 : 19;
+  const titleFontSize = ratio.height > 1000 ? 54 : 44;
+  const cardY = ratio.height > 1000 ? 232 : 212;
+  const cardHeight = ratio.height - cardY - 92;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${ratio.width}" height="${ratio.height}" viewBox="0 0 ${ratio.width} ${ratio.height}">
@@ -435,17 +638,21 @@ function buildExportSvg() {
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#000000" flood-opacity="0.18"/>
     </filter>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+    </pattern>
   </defs>
   <rect width="${ratio.width}" height="${ratio.height}" rx="28" fill="url(#bg)" />
-  <g opacity="0.08">
-    <path d="M0 0 H${ratio.width} V${Math.round(ratio.height * 0.16)} Q${Math.round(ratio.width * 0.75)} ${Math.round(ratio.height * 0.24)} ${Math.round(ratio.width * 0.48)} ${Math.round(ratio.height * 0.18)} T0 ${Math.round(ratio.height * 0.24)} Z" fill="#ffffff"/>
+  <g opacity="0.1">
+    <path d="M0 0 H${ratio.width} V${Math.round(ratio.height * 0.18)} Q${Math.round(ratio.width * 0.72)} ${Math.round(ratio.height * 0.26)} ${Math.round(ratio.width * 0.44)} ${Math.round(ratio.height * 0.18)} T0 ${Math.round(ratio.height * 0.24)} Z" fill="#ffffff"/>
   </g>
+  <rect width="${ratio.width}" height="${Math.round(ratio.height * 0.24)}" fill="url(#grid)" opacity="0.35"/>
   <text x="68" y="72" fill="${palette.accentStrong}" font-size="20" font-family="Manrope, Noto Sans SC, sans-serif" font-weight="700" letter-spacing="4">PRODUCT BLUEPRINT</text>
-  <text x="68" y="132" fill="#ffffff" font-size="${ratio.height > 1000 ? 54 : 44}" font-family="Manrope, Noto Sans SC, sans-serif" font-weight="800">${title}</text>
-  <text x="${subtitleX}" y="${subtitleY}" fill="rgba(255,255,255,0.76)" font-size="18" font-family="Noto Sans SC, sans-serif">${subtitleLines.map((line, index) => `<tspan x="${subtitleX}" dy="${index === 0 ? 0 : 30}">${escapeXml(line)}</tspan>`).join("")}</text>
+  <text x="68" y="128" fill="#ffffff" font-size="${titleFontSize}" font-family="Manrope, Noto Sans SC, sans-serif" font-weight="800">${title}</text>
+  <text x="${subtitleX}" y="${subtitleY}" fill="rgba(255,255,255,0.8)" font-size="${subtitleFontSize}" font-family="Noto Sans SC, sans-serif">${subtitleLines.map((line, index) => `<tspan x="${subtitleX}" dy="${index === 0 ? 0 : Math.round(subtitleFontSize * 1.6)}">${escapeXml(line)}</tspan>`).join("")}</text>
   <g filter="url(#shadow)">
-    <rect x="52" y="174" width="${ratio.width - 104}" height="${ratio.height - 252}" rx="30" fill="${palette.cardBg}" />
-    <rect x="84" y="206" width="140" height="10" rx="5" fill="url(#accent)" />
+    <rect x="52" y="${cardY}" width="${ratio.width - 104}" height="${cardHeight}" rx="30" fill="${palette.cardBg}" />
+    <rect x="84" y="${cardY + 30}" width="140" height="10" rx="5" fill="url(#accent)" />
     ${embeddedDiagram}
   </g>
   ${footerLeft ? `<text x="68" y="${ratio.height - 34}" fill="rgba(255,255,255,0.65)" font-size="18" font-family="Noto Sans SC, sans-serif">${footerLeft}</text>` : ""}
@@ -622,6 +829,8 @@ function makeDefaultDiagram(overrides = {}) {
     }).format(new Date()),
     palette: "aurora",
     ratio: "16:9",
+    previewMode: "original",
+    optimizedMermaid: "",
     mermaid: templates.roadmap,
     templateKey: "roadmap",
     ...overrides

@@ -80,7 +80,12 @@
         <section class="panel-block editor-block">
           <div class="editor-head">
             <label class="field-label" for="mermaid-input">Mermaid</label>
-            <button id="format-btn" class="ghost-btn">恢复示例</button>
+            <div class="editor-actions">
+              <button id="optimize-btn" class="ghost-btn">智能优化</button>
+              <button id="toggle-optimized-btn" class="ghost-btn">预览优化版</button>
+              <button id="apply-optimized-btn" class="ghost-btn">写回编辑区</button>
+              <button id="format-btn" class="ghost-btn">恢复示例</button>
+            </div>
           </div>
           <textarea id="mermaid-input" spellcheck="false"></textarea>
         </section>
